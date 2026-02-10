@@ -29,6 +29,10 @@ class ProductController extends Controller
      */
     public function store(StoreProductRequest $request): JsonResponse
     {
+        if (!$request->user() || !$request->user()->is_admin) {
+            return response()->json(['message' => 'Icaze yoxdur.'], 403);
+        }
+
         // Addım 1: Validasiya (Yoxlama)
         // React-dən gələn məlumatların boş və ya səhv olub-olmadığını yoxlayırıq.
         $validated = $request->validated();
@@ -62,6 +66,10 @@ class ProductController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        if (!$request->user() || !$request->user()->is_admin) {
+            return response()->json(['message' => 'Icaze yoxdur.'], 403);
+        }
+
         $product = Product::find($id);
         if (!$product) {
             return response()->json(['message' => 'Mehsul tapilmadi'], 404);
@@ -88,6 +96,10 @@ class ProductController extends Controller
      */
     public function destroy(string $id)
     {
+        if (!request()->user() || !request()->user()->is_admin) {
+            return response()->json(['message' => 'Icaze yoxdur.'], 403);
+        }
+
         // 1. Məhsulu bazada axtarırıq
         $product = Product::findOrFail($id); // Əgər məhsul tapılmazsa, 404 səhifəsi qaytarır
 
