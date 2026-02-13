@@ -39,6 +39,8 @@ class User extends Authenticatable
      *
      * @return array<string, string>
      */
+
+    // password üçün hashed
     protected function casts(): array
     {
         return [

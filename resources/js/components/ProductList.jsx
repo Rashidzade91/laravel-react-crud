@@ -721,7 +721,7 @@ function ProductList() {
                     </tr>
                 </thead>
                 <tbody>
-                    {products.map((p) => (
+                    {products?.data?.map((p) => (
                         <tr key={p.id}>
                             <td>{p.name}</td>
                             <td>{p.price}</td>

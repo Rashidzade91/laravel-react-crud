@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -35,6 +36,12 @@ class OrderController extends Controller
 
         $user = $request->user();
 
+
+        // transaction: Databazada natamam/yarımçıq məlumat qalmasın.
+        // order yaradılır
+        //order item-lər yaradılır
+        //total yenilənir
+        //Əgər 2-ci addımda xəta olsa, 1-ci addım da geri qaytarılır.
         $order = DB::transaction(function () use ($validated, $user) {
             $order = Order::create([
                 'user_id' => $user->id,
@@ -44,6 +51,10 @@ class OrderController extends Controller
             ]);
 
             $total = 0;
+
+
+            // lock olmasa ikisi də “stok var” görüb səhv satış ola bilər.
+            // lock ilə biri işləyənə qədər o biri gözləyir, stok düzgün qalır.
 
             foreach ($validated['items'] as $item) {
                 $product = Product::lockForUpdate()->find($item['product_id']);
@@ -93,11 +104,7 @@ class OrderController extends Controller
     // Bu funksiya yalnız Adminlər üçündür.
     public function updateStatus(Request $request, int $id)
     {
-        $user = $request->user();
-
-        if (!$user->is_admin) {
-            return response()->json(['message' => 'Icaze yoxdur.'], 403);
-        }
+        //dd(Auth::guard('api')->user());
 
         $validated = $request->validate([
             'status' => ['required', 'string', 'in:pending,approved,rejected,shipped,completed,canceled'],

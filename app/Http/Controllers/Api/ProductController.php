@@ -4,128 +4,61 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\UpdateProductRequest;
+use App\Http\Resources\ProductResource;
 use App\Models\Product;
-use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(): AnonymousResourceCollection
     {
-        // latest() Product::latest()->get() əlavə etsək, ən son əlavə olunan məhsul ən başda görünər.
-        // Cavabı JSON formatında qaytarırıq. 
-        // Status kodu yazmasaq, susmaya görə 200 (OK) sayılır.
-        $products = Product::all();
+        $products = Product::query()->latest()->paginate(10);
 
-        return response()->json(data: $products);
+        return ProductResource::collection($products);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(StoreProductRequest $request): JsonResponse
+    public function store(StoreProductRequest $request): ProductResource
     {
-        if (!$request->user() || !$request->user()->is_admin) {
-            return response()->json(['message' => 'Icaze yoxdur.'], 403);
-        }
+        $product = Product::create($request->validated());
 
-        // Addım 1: Validasiya (Yoxlama)
-        // React-dən gələn məlumatların boş və ya səhv olub-olmadığını yoxlayırıq.
-        $validated = $request->validated();
-
-
-        // Addım 2: Bazaya Yazmaq
-        // Əgər validasiyadan keçsə, bu kod işləyəcək
-        $product = Product::create($validated);
-
-        // Addım 3: React-ə uğurlu cavab qaytarmaq
-        return response()->json([
-            'success' => true,
-            'message' => 'Mehsul bazaya elave edildi',
-            'data' => $product,
-        ], 201); // 201 status kodu 'created' demekdir.
-
+        return new ProductResource($product);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(int $id)
+    public function show(Product $product): ProductResource
     {
-        $product = Product::findOrFail($id);
-
-        return response()->json($product);
+        return new ProductResource($product);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function update(UpdateProductRequest $request, Product $product): ProductResource
     {
-        if (!$request->user() || !$request->user()->is_admin) {
-            return response()->json(['message' => 'Icaze yoxdur.'], 403);
-        }
+        $product->update($request->validated());
 
-        $product = Product::find($id);
-        if (!$product) {
-            return response()->json(['message' => 'Mehsul tapilmadi'], 404);
-        }
-
-        // 2. Gələn məlumatları yoxlayırıq (Validation)
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'count' => ['required', 'integer', 'min:0'],
-        ]);
-
-        $product->update($validated);
-
-        return response()->json([
-            'message' => 'Mehsul ugurla yenilendi',
-            'product' => $product
-        ]);
+        return new ProductResource($product->refresh());
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    public function destroy(Product $product): JsonResponse
     {
-        if (!request()->user() || !request()->user()->is_admin) {
-            return response()->json(['message' => 'Icaze yoxdur.'], 403);
-        }
-
-        // 1. Məhsulu bazada axtarırıq
-        $product = Product::findOrFail($id); // Əgər məhsul tapılmazsa, 404 səhifəsi qaytarır
-
-        // 2. Əgər məhsul tapılmasa, xəta qaytarırıq
-        if (!$product) {
-            return response()->json([
-                'message' => 'Mehsul tapilmadi',
-            ], 404);
-        }
-        // 3. Məhsulu silirik
         $product->delete();
 
-        // 4. Uğurlu cavab qaytarırıq
-        return response()->json([
-            'message' => 'Mehsul silindi',
-        ], 200);
+        return response()->json(['message' => 'Mehsul silindi']);
     }
 
-    public function search(Request $request)
+    public function search(Request $request): AnonymousResourceCollection
     {
-        $query = $request->input('query');
+        $query = trim((string) $request->input('query', ''));
+        if ($query === '') {
+            return ProductResource::collection(collect());
+        }
 
-        $products = Product::where('name', 'LIKE', "%{$query}%")
-            ->orWhere('description', 'LIKE', "%{$query}%")
+        $products = Product::query()
+            ->where('name', 'like', "%{$query}%")
+            ->orWhere('description', 'like', "%{$query}%")
+            ->latest()
             ->get();
 
-        return response()->json($products);
+        return ProductResource::collection($products);
     }
 }
