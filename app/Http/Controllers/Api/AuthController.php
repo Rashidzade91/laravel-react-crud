@@ -29,6 +29,28 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
+        return $this->loginByRole($request, false);
+    }
+
+    public function adminLogin(Request $request)
+    {
+        return $this->loginByRole($request, true);
+    }
+
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json(['message' => 'Cixis edildi.']);
+    }
+
+    public function me(Request $request)
+    {
+        return response()->json($request->user());
+    }
+
+    private function loginByRole(Request $request, bool $isAdmin)
+    {
         $validated = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
@@ -42,23 +64,18 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken('api')->plainTextToken;
+        if ((bool) $user->is_admin !== $isAdmin) {
+            throw ValidationException::withMessages([
+                'email' => [$isAdmin ? 'Bu hesab admin deyil.' : 'Bu endpoint yalniz user ucundur.'],
+            ]);
+        }
+
+        $tokenName = $isAdmin ? 'admin-api' : 'user-api';
+        $token = $user->createToken($tokenName)->plainTextToken;
 
         return response()->json([
             'user' => $user,
             'token' => $token,
         ]);
-    }
-
-    public function logout(Request $request)
-    {
-        $request->user()->currentAccessToken()->delete();
-
-        return response()->json(['message' => 'Cixis edildi.']);
-    }
-
-    public function me(Request $request)
-    {
-        return response()->json($request->user());
     }
 }

@@ -14,13 +14,15 @@ Route::get('/products/search', [ProductController::class, 'search']);
 // Brauzer və ya React-dən GET http://localhost:8000/api/products yazanda işləyir
 Route::get('/products', [ProductController::class, 'index']);
 
-// 2. Yeni məhsul yaratmaq (Create)
-// React-dən POST http://localhost:8000/api/products yazanda işləyir
-Route::middleware(['auth:sanctum', 'admin'])->post('/products', [ProductController::class, 'store']);
-
 // 3. Tək bir məhsulun məlumatına baxmaq (Read - Single)
 // Məsələn: /api/products/5 (ID-si 5 olan məhsulu gətirir)
 Route::get('/products/{product}', [ProductController::class, 'show']);
+
+
+
+// 2. Yeni məhsul yaratmaq (Create)
+// React-dən POST http://localhost:8000/api/products yazanda işləyir
+Route::middleware(['auth:sanctum', 'admin'])->post('/products', [ProductController::class, 'store']);
 
 // 4. Mövcud məhsulu yeniləmək (Update)
 // PUT və ya PATCH metodu ilə işləyir
@@ -32,6 +34,7 @@ Route::middleware(['auth:sanctum', 'admin'])->delete('/products/{product}', [Pro
 
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/admin/login', [AuthController::class, 'adminLogin']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -45,4 +48,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
 });
 
-Route::middleware(['api', 'admin'])->patch('/orders/{id}/status/', [OrderController::class, 'updateStatus']);
+Route::middleware(['auth:sanctum', 'admin'])->patch('/orders/{id}/status', [OrderController::class, 'updateStatus']);

@@ -67,7 +67,7 @@ class OrderController extends Controller
                     abort(422, 'Anbarda kifayet qeder mehsul yoxdur.');
                 }
 
-                $price = (float) $product->getRawOriginal('price');
+                $price = (float) $product->getRawOriginal(key: 'price');
                 $lineTotal = $price * $item['quantity'];
                 $total += $lineTotal;
 

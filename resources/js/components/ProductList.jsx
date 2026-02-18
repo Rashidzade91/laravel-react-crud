@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 
 function ProductList() {
@@ -26,26 +26,19 @@ function ProductList() {
     const [editingOrder, setEditingOrder] = useState(null);
     const [editingItems, setEditingItems] = useState([]);
     const [editingNote, setEditingNote] = useState("");
+    const ordersFetchInFlightRef = useRef(false);
+    const lastOrdersFetchAtRef = useRef(0);
 
     useEffect(() => {
         if (token) {
             axios.defaults.headers.common.Authorization = `Bearer ${token}`;
             fetchMe();
-            fetchOrders();
         } else {
             delete axios.defaults.headers.common.Authorization;
             setAuthUser(null);
             setOrders([]);
         }
     }, [token]);
-
-    useEffect(() => {
-        if (!authUser) return;
-        const interval = setInterval(() => {
-            fetchOrders();
-        }, 5000);
-        return () => clearInterval(interval);
-    }, [authUser]);
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
@@ -191,8 +184,14 @@ function ProductList() {
         }
     };
 
-    const fetchOrders = async () => {
+    const fetchOrders = async (force = false) => {
         if (!token) return;
+        const now = Date.now();
+        if (!force && now - lastOrdersFetchAtRef.current < 4000) return;
+        if (ordersFetchInFlightRef.current) return;
+
+        ordersFetchInFlightRef.current = true;
+        lastOrdersFetchAtRef.current = now;
         try {
             const response = await axios.get("/api/orders");
             const data = response.data;
@@ -203,6 +202,8 @@ function ProductList() {
             }
         } catch (error) {
             console.error("Orders xetasi:", error.response?.data);
+        } finally {
+            ordersFetchInFlightRef.current = false;
         }
     };
 
@@ -260,7 +261,7 @@ function ProductList() {
             await axios.post("/api/orders", payload);
             setCart([]);
             setOrderNote("");
-            await fetchOrders();
+            await fetchOrders(true);
             await fetchProducts();
             alert("Sifaris yaradildi.");
         } catch (error) {
@@ -272,7 +273,7 @@ function ProductList() {
     const updateOrderStatus = async (orderId, status) => {
         try {
             await axios.patch(`/api/orders/${orderId}/status`, { status });
-            await fetchOrders();
+            await fetchOrders(true);
         } catch (error) {
             console.error("Status xetasi:", error.response?.data);
             alert("Status deyisile bilmedi.");
@@ -354,7 +355,7 @@ function ProductList() {
             setEditingOrder(null);
             setEditingItems([]);
             setEditingNote("");
-            await fetchOrders();
+            await fetchOrders(true);
             await fetchProducts();
             alert("Sifaris yenilendi.");
         } catch (error) {
@@ -366,7 +367,7 @@ function ProductList() {
     const cancelOrder = async (orderId) => {
         try {
             await axios.post(`/api/orders/${orderId}/cancel`);
-            await fetchOrders();
+            await fetchOrders(true);
             await fetchProducts();
         } catch (error) {
             console.error("Cancel xetasi:", error.response?.data);
@@ -542,7 +543,7 @@ function ProductList() {
                     <hr />
 
                     <h2>Sifarisler</h2>
-                    <button onClick={fetchOrders}>Yenile</button>
+                    <button onClick={() => fetchOrders(true)}>Yenile</button>
                     <table border="1" width="100%" style={{ marginTop: "10px" }}>
                         <thead>
                             <tr>
